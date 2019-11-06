@@ -3,18 +3,27 @@ import Foundation
 
 // TODO: read from any file name
 func parseRooms() -> [Room] {
-  let path = "/Users/ericandrews/Desktop/rooms.json"
+  if let path = Bundle.main.path(forResource: "rooms",
+                                ofType: "json",
+                                inDirectory: "jsonFiles") {
 
-  do {
-    let jsonString = try String(contentsOfFile: path)
+    do {
+      let jsonString = try String(contentsOfFile: path)
 
-    let jsonData = jsonString.data(using: .utf8)!
-    let decoder = JSONDecoder()
-    let r = try! decoder.decode(RoomData.self, from: jsonData)
-    
-    return r.allRooms
+      let jsonData = jsonString.data(using: .utf8)!
+      let decoder = JSONDecoder()
+      let r = try! decoder.decode(RoomData.self, from: jsonData)
+      
+      return r.allRooms
+    }
+    catch {
+      print("something went wrong loading file")
+      print("PATH: " + path)
+      let r: [Room] = []
+      return r
+    }
   }
-  catch {
+  else {
     let r: [Room] = []
     return r
   }
@@ -22,8 +31,9 @@ func parseRooms() -> [Room] {
 
 // helper function
 func getDocumentsDirectory() -> URL {
-    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-    return paths[0]
+  let paths = FileManager.default.urls(for: .documentDirectory,
+                                       in: .userDomainMask)
+  return paths[0]
 }
 
 // call a shell function to move autoRooms.json from documents to desktop
@@ -35,30 +45,39 @@ func move(destName: String) {
   task.launchPath = "/usr/bin/env"
   task.arguments = ["mv",
                     "/Users/ericandrews/Documents/autoRooms.json",
-                    "/Users/ericandrews/Desktop/" + destName]
+                    destName]
   // Launch the task
   task.launch()
 }
 
-// should write to desktop but that's apparently very difficult
-// TODO: write to any file name, not just autoRooms.json
+// writes to autoRooms.json; this still must be manually changed
+// to protect against bad writes
+// TODO: generate rooms backup, write to rooms.json
 func writeRooms(rooms: [Room]) {
   let rData: RoomData = RoomData(allRooms: rooms)
 
   let jsonData = try! JSONEncoder().encode(rData)
   let jsonString = String(data: jsonData, encoding: .utf8)!
 
-  let path = getDocumentsDirectory().appendingPathComponent("autoRooms.json")
+  if let destPath = Bundle.main.path(forResource: "autoRooms",
+                                     ofType: "json",
+                                     inDirectory: "jsonFiles") {
 
-  do {
-    try jsonString.write(to: path, atomically: false, encoding: String.Encoding.utf8)
-    move(destName: "autoRooms.json") // put it in the right directory
-  }
-  catch let error as NSError {
-    print("Error writing to file")
-    print(error)
+    do {
+      let path = getDocumentsDirectory().appendingPathComponent(
+        "autoRooms.json")
+      try jsonString.write(to: path,
+                           atomically: false,
+                           encoding: String.Encoding.utf8)
+      move(destName: destPath)
+    }
+    catch let error as NSError {
+      print("error writing to file")
+      print(error)
+    }
   }
 }
+
 
 func parseAttributes() -> Attributes {
   let path = "/Users/ericandrews/Desktop/attributes.json"
